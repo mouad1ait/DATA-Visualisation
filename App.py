@@ -132,6 +132,31 @@ if not filtered_data.empty:
         with col4:
             st.metric("Plage", f"{filtered_data[selected_col].min():.2f} - {filtered_data[selected_col].max():.2f}")
 
+# Analyse des colonnes catégorielles
+st.header("📊 Analyse des Variables Catégorielles")
+
+# Sélectionner uniquement les colonnes catégorielles
+categorical_cols = filtered_data.select_dtypes(include=['object', 'category']).columns
+
+if not categorical_cols.empty:
+    for col in categorical_cols:
+        # Calcul des 3 valeurs les plus fréquentes
+        top_3 = filtered_data[col].value_counts().nlargest(3)
+        
+        # Création d'un expander pour chaque colonne
+        with st.expander(f"Colonne: {col}", expanded=False):
+            st.write(f"**Top 3 des valeurs les plus fréquentes:**")
+            
+            # Affichage sous forme de tableau
+            st.table(top_3.reset_index().rename(columns={
+                'index': 'Valeur',
+                col: 'Fréquence'
+            }))
+            
+            # Ajout d'un graphique en barres
+            st.bar_chart(top_3)
+else:
+    st.info("Aucune colonne catégorielle trouvée dans les données filtrées.")
 # Export Excel
 st.header("💾 Export des Données")
 
