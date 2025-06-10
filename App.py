@@ -141,11 +141,11 @@ categorical_cols = filtered_data.select_dtypes(include=['object', 'category']).c
 if not categorical_cols.empty:
     for col in categorical_cols:
         # Calcul des 3 valeurs les plus fréquentes
-        top_3 = filtered_data[col].value_counts().nlargest(3)
+        top_3 = filtered_data[col].value_counts()
         
         # Création d'un expander pour chaque colonne
         with st.expander(f"Colonne: {col}", expanded=False):
-            st.write(f"**Top 3 des valeurs les plus fréquentes:**")
+            st.write(f"**Les valeurs les plus fréquentes:**")
             
             # Affichage sous forme de tableau
             st.table(top_3.reset_index().rename(columns={
