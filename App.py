@@ -10,7 +10,7 @@ st.set_page_config(page_title="Éditeur de Données", layout="wide")
 st.title("📊 Éditeur de Données Interactif")
 
 # Fonction pour charger les données
-@st.cache_data(experimental_allow_widgets=True)
+@st.cache_data
 def load_data(uploaded_file=None):
     if uploaded_file is not None:
         try:
