@@ -3,13 +3,12 @@ import pandas as pd
 import numpy as np
 from io import BytesIO
 
-# Configuration de la page
-st.set_page_config(page_title="Éditeur de Données", layout="wide")
+st.set_page_config(page_title="Visualisateur de données", layout="wide")
 
-# Titre
-st.title("📊 Éditeur de Données Interactif")
 
-# Fonction pour charger les données
+st.title("Éditeur de Données Interactif")
+
+
 @st.cache_data
 def load_data(uploaded_file=None):
     if uploaded_file is not None:
@@ -20,19 +19,11 @@ def load_data(uploaded_file=None):
             return pd.DataFrame()
     return pd.DataFrame()
 
-# Upload de fichier
+
 uploaded_file = st.file_uploader("Importer un fichier Excel", type=["xlsx", "xls"])
 data = load_data(uploaded_file)
 
-# Si pas de données, créer un dataframe vide avec exemple
-if data.empty:
-    data = pd.DataFrame({
-        'ID': [1, 2, 3],
-        'Nom': ['Alice', 'Bob', 'Charlie'],
-        'Age': [25, 30, 35],
-        'Département': ['Ventes', 'IT', 'Marketing'],
-        'Salaire': [50000, 75000, 60000]
-    })
+
 
 # Sidebar pour les filtres
 with st.sidebar:
