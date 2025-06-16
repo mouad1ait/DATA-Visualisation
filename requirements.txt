@@ -7,4 +7,4 @@ xlsxwriter
 matplotlib
 seaborn
 python-dateutil
-python-docs
+python-docx
