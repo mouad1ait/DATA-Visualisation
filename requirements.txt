@@ -6,3 +6,4 @@ xlrd
 xlsxwriter
 matplotlib
 seaborn
+python-dateutil
