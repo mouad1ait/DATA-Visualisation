@@ -7,7 +7,7 @@ import seaborn as sns
 from pandas.api.types import is_datetime64_any_dtype as is_datetime
 
 # Configuration de la page
-st.set_page_config(page_title="Analyse des Réclamations", page_uploader="📊", layout="wide")
+st.set_page_config(page_title="Analyse des Réclamations", page_icon="📊", layout="wide")
 
 # Titre de l'application
 st.title("📊 Analyse des Données de Réclamation")
