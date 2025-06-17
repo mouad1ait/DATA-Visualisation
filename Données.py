@@ -6,21 +6,33 @@ from datetime import datetime
 import os
 
 def main():
-    st.title("📊 Visualisation Avancée de Données Excel")
+    st.title("📊 Visualisation de Données Techniques")
     
     # Chargement du fichier
     uploaded_file = st.file_uploader("Charger un fichier Excel", type=["xlsx", "xls"])
     
     if uploaded_file is not None:
         try:
+            # Lecture du fichier
             df = pd.read_excel(uploaded_file)
             
             # Vérification des colonnes
-            required_columns = ['modèle', 'SN', 'refPays', 'filiale', 
-                              'installationDate', 'Lastconnexion', 'incident', 'incidentDate']
+            required_columns = {
+                'modèle': 'Modèle produit',
+                'SN': 'Numéro de série',
+                'refPays': 'Référence pays',
+                'filiale': 'Filiale',
+                'installationDate': 'Date installation',
+                'Lastconnexion': 'Dernière connexion',
+                'incident': 'Incident',
+                'incidentDate': 'Date incident'
+            }
             
-            if not all(col in df.columns for col in required_columns):
-                st.error("Les colonnes dans le fichier Excel ne correspondent pas aux attentes.")
+            # Vérifier les colonnes manquantes
+            missing_cols = [col for col in required_columns if col not in df.columns]
+            if missing_cols:
+                st.error(f"Colonnes manquantes: {', '.join(missing_cols)}")
+                st.write("Colonnes détectées:", list(df.columns))
                 return
             
             # Préparation des données
@@ -28,106 +40,185 @@ def main():
             
             # Sidebar avec filtres
             st.sidebar.header("Filtres")
-            model_filter = st.sidebar.selectbox("Modèle", ['Tous'] + sorted(df['modèle'].unique().tolist()))
-            filiale_filter = st.sidebar.selectbox("Filiale", ['Tous'] + sorted(df['filiale'].unique().tolist()))
-            year_filter = st.sidebar.selectbox("Année", ['Tous'] + sorted(df['année'].unique().astype(str).tolist()))
+            
+            # Filtre par modèle
+            model_list = ['Tous'] + sorted(df['modèle'].unique().tolist())
+            model_filter = st.sidebar.selectbox("Modèle", model_list)
+            
+            # Filtre par filiale
+            filiale_list = ['Tous'] + sorted(df['filiale'].unique().tolist())
+            filiale_filter = st.sidebar.selectbox("Filiale", filiale_list)
+            
+            # Filtre par année (extraite du SN)
+            if 'année' in df:
+                year_list = ['Tous'] + sorted(df['année'].astype(str).unique().tolist())
+                year_filter = st.sidebar.selectbox("Année de production", year_list)
+            else:
+                year_filter = 'Tous'
             
             # Application des filtres
             filtered_df = apply_filters(df, model_filter, filiale_filter, year_filter)
             
-            # Affichage des données
-            st.header("Données Filtrees")
-            st.dataframe(filtered_df)
+            # Métriques clés
+            st.header("Indicateurs Clés")
+            col1, col2, col3 = st.columns(3)
             
-            # Visualisations
-            st.header("Visualisations")
-            
-            col1, col2 = st.columns(2)
             with col1:
-                st.subheader("Répartition par Modèle")
-                fig1 = plot_pie(filtered_df, 'modèle')
-                st.pyplot(fig1)
+                st.metric("Appareils", len(filtered_df))
                 
             with col2:
-                st.subheader("Répartition par Filiale")
-                fig2 = plot_pie(filtered_df, 'filiale')
-                st.pyplot(fig2)
+                if 'différence jours' in filtered_df:
+                    avg_days = round(filtered_df['différence jours'].mean(), 1)
+                    st.metric("Jours moyen avant incident", avg_days)
             
-            st.subheader("Distribution des Jours entre Incident et Installation")
-            fig3 = plot_histogram(filtered_df, 'différence jours')
-            st.pyplot(fig3)
+            with col3:
+                if 'âge appareil (ans)' in filtered_df:
+                    avg_age = round(filtered_df['âge appareil (ans)'].mean(), 1)
+                    st.metric("Âge moyen (ans)", avg_age)
             
-            st.subheader("Nombre d'Incidents par Année")
-            fig4 = plot_countplot(filtered_df, 'année')
-            st.pyplot(fig4)
+            # Affichage des données
+            st.header("Données Filtrees")
+            st.dataframe(filtered_df, height=300)
+            
+            # Visualisations
+            st.header("Analyses")
+            
+            # Graphiques en ligne
+            col1, col2 = st.columns(2)
+            with col1:
+                plot_pie_chart(filtered_df, 'modèle', "Répartition par Modèle")
+            with col2:
+                plot_pie_chart(filtered_df, 'filiale', "Répartition par Filiale")
+            
+            # Histogramme
+            if 'différence jours' in filtered_df:
+                plot_histogram(filtered_df, 'différence jours', 
+                             "Distribution des jours avant incident", 
+                             "Jours", "Nombre d'appareils")
             
             # Export des données
-            if st.button("Exporter les Données"):
+            st.header("Export")
+            if st.button("Exporter les données filtrées"):
                 export_data(filtered_df)
                 
         except Exception as e:
-            st.error(f"Erreur lors du traitement du fichier: {str(e)}")
+            st.error(f"Erreur lors du traitement: {str(e)}")
 
 def prepare_data(df):
-    # Conversion des dates
-    df['installationDate'] = pd.to_datetime(df['installationDate'])
-    df['incidentDate'] = pd.to_datetime(df['incidentDate'])
-    df['Lastconnexion'] = pd.to_datetime(df['Lastconnexion'])
+    # Conversion robuste des dates
+    date_columns = {
+        'installationDate': 'Date installation',
+        'incidentDate': 'Date incident',
+        'Lastconnexion': 'Dernière connexion'
+    }
     
-    # Calcul des différences
-    df['différence jours'] = (df['incidentDate'] - df['installationDate']).dt.days
+    for col, label in date_columns.items():
+        try:
+            # Conversion en datetime avec gestion d'erreur
+            df[col] = pd.to_datetime(df[col], errors='coerce', dayfirst=True)
+            
+            # Vérification des conversions
+            if df[col].isnull().any():
+                nb_errors = df[col].isnull().sum()
+                st.warning(f"{nb_errors} {label} non converties (format invalide)")
+        except Exception as e:
+            st.error(f"Erreur conversion {label}: {str(e)}")
+            raise
     
-    # Extraction de l'année
-    df['année'] = df['SN'].str[2:4].astype(int) + 2000
+    # Calcul différence entre incident et installation
+    if 'installationDate' in df and 'incidentDate' in df:
+        df['différence jours'] = (df['incidentDate'] - df['installationDate']).dt.days
     
-    # Calcul de l'âge
-    current_year = datetime.now().year
-    df['âge appareil (ans)'] = current_year - df['année']
+    # Extraction année du numéro de série (SN)
+    if 'SN' in df:
+        try:
+            # Format: mmaaxxx (mm=mois, aa=année)
+            df['année'] = '20' + df['SN'].astype(str).str[2:4]
+            df['année'] = pd.to_numeric(df['année'], errors='coerce')
+            
+            # Calcul âge appareil
+            current_year = datetime.now().year
+            df['âge appareil (ans)'] = current_year - df['année']
+        except:
+            st.warning("Impossible d'extraire l'année du numéro de série")
     
     return df
 
 def apply_filters(df, model, filiale, year):
     filtered = df.copy()
+    
     if model != 'Tous':
         filtered = filtered[filtered['modèle'] == model]
+    
     if filiale != 'Tous':
         filtered = filtered[filtered['filiale'] == filiale]
-    if year != 'Tous':
+    
+    if year != 'Tous' and 'année' in filtered:
         filtered = filtered[filtered['année'] == int(year)]
+    
     return filtered
 
-def plot_pie(df, column):
+def plot_pie_chart(df, column, title):
+    if column not in df or df[column].isnull().all():
+        st.warning(f"Données manquantes pour {title}")
+        return
+    
+    fig, ax = plt.subplots()
     counts = df[column].value_counts()
-    fig, ax = plt.subplots()
+    if len(counts) > 10:
+        # Regrouper les petites catégories
+        threshold = counts.sum() * 0.02  # 2%
+        small_categories = counts[counts < threshold]
+        if len(small_categories) > 0:
+            counts = counts[counts >= threshold]
+            counts['Autres'] = small_categories.sum()
+    
     counts.plot.pie(autopct='%1.1f%%', ax=ax)
-    return fig
+    ax.set_title(title)
+    ax.set_ylabel('')
+    st.pyplot(fig)
 
-def plot_histogram(df, column):
+def plot_histogram(df, column, title, xlabel, ylabel):
     fig, ax = plt.subplots()
-    sns.histplot(df[column], bins=20, kde=True, ax=ax)
-    return fig
-
-def plot_countplot(df, column):
-    fig, ax = plt.subplots()
-    sns.countplot(data=df, x=column, ax=ax)
-    plt.xticks(rotation=45)
-    return fig
+    sns.histplot(data=df, x=column, bins=20, kde=True, ax=ax)
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    st.pyplot(fig)
 
 def export_data(df):
-    # Création d'un fichier Excel en mémoire
-    output = pd.ExcelWriter('donnees_filtrees.xlsx', engine='openpyxl')
-    df.to_excel(output, index=False)
-    output.close()
+    # Création du fichier Excel
+    output_path = 'donnees_filtrees.xlsx'
     
-    # Téléchargement du fichier
-    with open('donnees_filtrees.xlsx', 'rb') as f:
+    with pd.ExcelWriter(output_path) as writer:
+        # Données complètes
+        df.to_excel(writer, sheet_name='Données', index=False)
+        
+        # Statistiques
+        stats = pd.DataFrame({
+            'Statistique': ['Nombre total', 'Modèle le plus courant', 'Filiale la plus courante',
+                           'Jours moyens avant incident', 'Âge moyen des appareils'],
+            'Valeur': [
+                len(df),
+                df['modèle'].mode()[0] if 'modèle' in df else 'N/A',
+                df['filiale'].mode()[0] if 'filiale' in df else 'N/A',
+                round(df['différence jours'].mean(), 1) if 'différence jours' in df else 'N/A',
+                round(df['âge appareil (ans)'].mean(), 1) if 'âge appareil (ans)' in df else 'N/A'
+            ]
+        })
+        stats.to_excel(writer, sheet_name='Statistiques', index=False)
+    
+    # Téléchargement
+    with open(output_path, 'rb') as f:
         st.download_button(
-            label="Télécharger les données filtrées",
+            label="Télécharger le fichier Excel",
             data=f,
-            file_name='donnees_filtrees.xlsx',
+            file_name='donnees_techniques_filtrees.xlsx',
             mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
-    os.remove('donnees_filtrees.xlsx')
+    
+    # Nettoyage
+    os.remove(output_path)
 
 if __name__ == "__main__":
     main()
