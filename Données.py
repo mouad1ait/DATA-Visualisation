@@ -6,7 +6,7 @@ from datetime import datetime
 import os
 
 def main():
-    st.title("📊 Visualisation de Données Techniques")
+    st.title("📊 Analyse des Appareils Techniques")
     
     # Chargement du fichier
     uploaded_file = st.file_uploader("Charger un fichier Excel", type=["xlsx", "xls"])
@@ -17,18 +17,11 @@ def main():
             df = pd.read_excel(uploaded_file)
             
             # Vérification des colonnes
-            required_columns = {
-                'modèle': 'Modèle produit',
-                'SN': 'Numéro de série',
-                'refPays': 'Référence pays',
-                'filiale': 'Filiale',
-                'installationDate': 'Date installation',
-                'Lastconnexion': 'Dernière connexion',
-                'incident': 'Incident',
-                'incidentDate': 'Date incident'
-            }
+            required_columns = [
+                'modèle', 'SN', 'refPays', 'filiale',
+                'installationDate', 'Lastconnexion', 'incident', 'incidentDate'
+            ]
             
-            # Vérifier les colonnes manquantes
             missing_cols = [col for col in required_columns if col not in df.columns]
             if missing_cols:
                 st.error(f"Colonnes manquantes: {', '.join(missing_cols)}")
@@ -49,35 +42,28 @@ def main():
             filiale_list = ['Tous'] + sorted(df['filiale'].unique().tolist())
             filiale_filter = st.sidebar.selectbox("Filiale", filiale_list)
             
-            # Filtre par année (extraite du SN)
-            if 'année' in df:
-                year_list = ['Tous'] + sorted(df['année'].astype(str).unique().tolist())
-                year_filter = st.sidebar.selectbox("Année de production", year_list)
-            else:
-                year_filter = 'Tous'
-            
             # Application des filtres
-            filtered_df = apply_filters(df, model_filter, filiale_filter, year_filter)
+            filtered_df = apply_filters(df, model_filter, filiale_filter)
             
             # Métriques clés
             st.header("Indicateurs Clés")
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                st.metric("Appareils", len(filtered_df))
+                st.metric("Nombre d'appareils", len(filtered_df))
                 
             with col2:
-                if 'différence jours' in filtered_df:
-                    avg_days = round(filtered_df['différence jours'].mean(), 1)
-                    st.metric("Jours moyen avant incident", avg_days)
+                if 'Time_to_Failure' in filtered_df:
+                    avg_ttf = round(filtered_df['Time_to_Failure'].mean(), 1)
+                    st.metric("Time to Failure moyen (jours)", avg_ttf)
             
             with col3:
-                if 'âge appareil (ans)' in filtered_df:
-                    avg_age = round(filtered_df['âge appareil (ans)'].mean(), 1)
-                    st.metric("Âge moyen (ans)", avg_age)
+                if 'Age_appareil' in filtered_df:
+                    avg_age = round(filtered_df['Age_appareil'].mean(), 1)
+                    st.metric("Âge moyen (jours)", avg_age)
             
             # Affichage des données
-            st.header("Données Filtrees")
+            st.header("Données Complètes")
             st.dataframe(filtered_df, height=300)
             
             # Visualisations
@@ -90,15 +76,20 @@ def main():
             with col2:
                 plot_pie_chart(filtered_df, 'filiale', "Répartition par Filiale")
             
-            # Histogramme
-            if 'différence jours' in filtered_df:
-                plot_histogram(filtered_df, 'différence jours', 
-                             "Distribution des jours avant incident", 
-                             "Jours", "Nombre d'appareils")
+            # Histogrammes
+            if 'Time_to_Failure' in filtered_df:
+                plot_histogram(filtered_df, 'Time_to_Failure', 
+                             "Distribution du Time to Failure", 
+                             "Jours avant incident", "Nombre d'appareils")
+            
+            if 'Age_appareil' in filtered_df:
+                plot_histogram(filtered_df, 'Age_appareil', 
+                             "Distribution de l'âge des appareils", 
+                             "Âge (jours)", "Nombre d'appareils")
             
             # Export des données
             st.header("Export")
-            if st.button("Exporter les données filtrées"):
+            if st.button("Exporter les données analysées"):
                 export_data(filtered_df)
                 
         except Exception as e:
@@ -125,26 +116,19 @@ def prepare_data(df):
             st.error(f"Erreur conversion {label}: {str(e)}")
             raise
     
-    # Calcul différence entre incident et installation
+    # Calcul du Time to Failure (date incident - date installation)
     if 'installationDate' in df and 'incidentDate' in df:
-        df['différence jours'] = (df['incidentDate'] - df['installationDate']).dt.days
+        df['Time_to_Failure'] = (df['incidentDate'] - df['installationDate']).dt.days
+        st.success(f"Time to Failure calculé pour {len(df)} appareils")
     
-    # Extraction année du numéro de série (SN)
-    if 'SN' in df:
-        try:
-            # Format: mmaaxxx (mm=mois, aa=année)
-            df['année'] = '20' + df['SN'].astype(str).str[2:4]
-            df['année'] = pd.to_numeric(df['année'], errors='coerce')
-            
-            # Calcul âge appareil
-            current_year = datetime.now().year
-            df['âge appareil (ans)'] = current_year - df['année']
-        except:
-            st.warning("Impossible d'extraire l'année du numéro de série")
+    # Calcul de l'âge (aujourd'hui - date installation)
+    if 'installationDate' in df:
+        df['Age_appareil'] = (datetime.now() - df['installationDate']).dt.days
+        st.success(f"Âge des appareils calculé pour {len(df)} appareils")
     
     return df
 
-def apply_filters(df, model, filiale, year):
+def apply_filters(df, model, filiale):
     filtered = df.copy()
     
     if model != 'Tous':
@@ -152,9 +136,6 @@ def apply_filters(df, model, filiale, year):
     
     if filiale != 'Tous':
         filtered = filtered[filtered['filiale'] == filiale]
-    
-    if year != 'Tous' and 'année' in filtered:
-        filtered = filtered[filtered['année'] == int(year)]
     
     return filtered
 
@@ -188,32 +169,32 @@ def plot_histogram(df, column, title, xlabel, ylabel):
 
 def export_data(df):
     # Création du fichier Excel
-    output_path = 'donnees_filtrees.xlsx'
+    output_path = 'analyse_appareils.xlsx'
     
     with pd.ExcelWriter(output_path) as writer:
         # Données complètes
         df.to_excel(writer, sheet_name='Données', index=False)
         
         # Statistiques
-        stats = pd.DataFrame({
+        stats_data = {
             'Statistique': ['Nombre total', 'Modèle le plus courant', 'Filiale la plus courante',
-                           'Jours moyens avant incident', 'Âge moyen des appareils'],
+                           'Time to Failure moyen (jours)', 'Âge moyen (jours)'],
             'Valeur': [
                 len(df),
                 df['modèle'].mode()[0] if 'modèle' in df else 'N/A',
                 df['filiale'].mode()[0] if 'filiale' in df else 'N/A',
-                round(df['différence jours'].mean(), 1) if 'différence jours' in df else 'N/A',
-                round(df['âge appareil (ans)'].mean(), 1) if 'âge appareil (ans)' in df else 'N/A'
+                round(df['Time_to_Failure'].mean(), 1) if 'Time_to_Failure' in df else 'N/A',
+                round(df['Age_appareil'].mean(), 1) if 'Age_appareil' in df else 'N/A'
             ]
-        })
-        stats.to_excel(writer, sheet_name='Statistiques', index=False)
+        }
+        pd.DataFrame(stats_data).to_excel(writer, sheet_name='Statistiques', index=False)
     
     # Téléchargement
     with open(output_path, 'rb') as f:
         st.download_button(
-            label="Télécharger le fichier Excel",
+            label="Télécharger l'analyse complète",
             data=f,
-            file_name='donnees_techniques_filtrees.xlsx',
+            file_name='analyse_appareils_techniques.xlsx',
             mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
     
