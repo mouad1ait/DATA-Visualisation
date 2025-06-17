@@ -122,16 +122,18 @@ def main():
                     mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
                 )
             
-            with export_col2:
+            # Dans la fonction main(), remplacer la partie PDF par:
+             with export_col2:
                 st.subheader("Rapport PDF")
-                pdf_report = create_pdf_report(filtered_df, filiale_table, fig_ttf, fig_age, 
-                                             global_comment, graph_comments)
-                st.download_button(
-                    label="Télécharger le rapport complet (PDF)",
-                    data=pdf_report,
-                    file_name='rapport_analyse.pdf',
-                    mime='application/pdf'
-                )
+                if st.button("Générer le rapport PDF"):
+                    pdf_report = create_pdf_report(filtered_df, filiale_table, fig_ttf, fig_age, 
+                                     global_comment, graph_comments)
+                    st.download_button(
+                        label="Télécharger le rapport PDF",
+                        data=pdf_report,
+                        file_name='rapport_analyse.pdf',
+                        mime='application/pdf'
+        )
             
             # Affichage des données brutes (optionnel)
             if st.checkbox("Afficher les données brutes"):
