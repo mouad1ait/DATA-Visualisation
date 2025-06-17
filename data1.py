@@ -188,24 +188,85 @@ def export_to_excel(df, global_comment, ttf_comment, age_comment):
     return output.getvalue()
 
 def create_pdf_report(df, global_comment, ttf_comment, age_comment):
-    """Crée un rapport PDF"""
+    """Crée un rapport PDF professionnel"""
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
     
     # En-tête
     pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, "Rapport d'Analyse Technique", 0, 1, 'C')
-    
-    # Contenu
+    pdf.cell(200, 10, txt="Rapport d'Analyse Technique", ln=1, align='C')
     pdf.set_font("Arial", size=10)
-    pdf.cell(200, 10, f"Généré le {datetime.now().strftime('%d/%m/%Y %H:%M')}", 0, 1, 'C')
+    pdf.cell(200, 10, txt=f"Généré le {datetime.now().strftime('%d/%m/%Y %H:%M')}", ln=1, align='C')
+    pdf.ln(15)
+    
+    # Statistiques
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(200, 10, txt="Statistiques Clés", ln=1)
+    pdf.set_font("Arial", size=10)
+    
+    stats = [
+        f"Appareils analysés: {len(df)}",
+        f"Appareils avec incidents: {df['Time_to_Failure'].notna().sum()}",
+        f"Time to Failure max: {df['Time_to_Failure'].max():.1f} mois" if df['Time_to_Failure'].notna().any() else "Time to Failure max: N/A",
+        f"Âge moyen depuis fabrication: {df['Age_fabrication'].mean():.1f} mois"
+    ]
+    
+    for stat in stats:
+        pdf.cell(0, 8, txt=stat, ln=1)
     pdf.ln(10)
     
-    if global_comment:
-        pdf.multi_cell(0, 10, f"Commentaire: {global_comment}")
+    # Tableau par filiale
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(200, 10, txt="Répartition par Filiale", ln=1)
     
-    return pdf.output(dest='S').encode('latin1')
+    filiale_table = df.groupby('filiale').agg(
+        Nombre=('SN', 'count'),
+        **{'TTF moyen (mois)': ('Time_to_Failure', 'mean')},
+        **{'Âge moyen (mois)': ('Age_fabrication', 'mean')}
+    ).round(1).reset_index()
+    
+    # En-têtes du tableau
+    pdf.set_font("Arial", 'B', 10)
+    col_width = [50, 30, 40, 40]
+    headers = filiale_table.columns
+    for i, header in enumerate(headers):
+        pdf.cell(col_width[i], 10, str(header), border=1, align='C')
+    pdf.ln()
+    
+    # Données du tableau
+    pdf.set_font("Arial", size=10)
+    for _, row in filiale_table.iterrows():
+        for i, val in enumerate(row):
+            pdf.cell(col_width[i], 10, str(val), border=1)
+        pdf.ln()
+    
+    # Commentaires
+    if global_comment or ttf_comment or age_comment:
+        pdf.ln(10)
+        pdf.set_font("Arial", 'B', 14)
+        pdf.cell(200, 10, txt="Commentaires", ln=1)
+        
+        if global_comment:
+            pdf.set_font("Arial", 'B', 12)
+            pdf.cell(200, 10, txt="Commentaire général:", ln=1)
+            pdf.set_font("Arial", size=10)
+            pdf.multi_cell(0, 8, txt=global_comment)
+        
+        if ttf_comment:
+            pdf.set_font("Arial", 'B', 12)
+            pdf.cell(200, 10, txt="Time to Failure:", ln=1)
+            pdf.set_font("Arial", size=10)
+            pdf.multi_cell(0, 8, txt=ttf_comment)
+        
+        if age_comment:
+            pdf.set_font("Arial", 'B', 12)
+            pdf.cell(200, 10, txt="Âge des appareils:", ln=1)
+            pdf.set_font("Arial", size=10)
+            pdf.multi_cell(0, 8, txt=age_comment)
+    
+    # Retourne directement les bytes sans ré-encoder
+    return pdf.output(dest='S')
 
 if __name__ == "__main__":
     main()
