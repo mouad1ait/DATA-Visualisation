@@ -133,7 +133,7 @@ def main():
                         data=pdf_report,
                         file_name='rapport_analyse.pdf',
                         mime='application/pdf'
-        )
+                )
             
             # Affichage des données brutes (optionnel)
             if st.checkbox("Afficher les données brutes"):
