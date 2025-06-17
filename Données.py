@@ -78,7 +78,7 @@ def prepare_data(df):
     df['différence jours'] = (df['incidentDate'] - df['installationDate']).dt.days
     
     # Extraction de l'année
-    df['année'] = df['no de série'].str[2:4].astype(int) + 2000
+    df['année'] = df['SN'].str[2:4].astype(int) + 2000
     
     # Calcul de l'âge
     current_year = datetime.now().year
