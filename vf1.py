@@ -112,9 +112,9 @@ def show_filiale_table(df):
     """Affiche le tableau de répartition par filiale"""
     table = df.groupby('filiale').agg(
         Nombre=('SN', 'count'),
-        **{'TTF moyen (mois)': ('Time_to_Failure', lambda x: round(x.mean(), 2) if x.notna().any() else 'N/A')},
-        **{'TTF max (mois)': ('Time_to_Failure', lambda x: round(x.max(), 2) if x.notna().any() else 'N/A')},
-        **{'TTF min (mois)': ('Time_to_Failure', lambda x: round(x.min(), 2) if x.notna().any() else 'N/A')},
+        **{'TTF moyen (mois)': ('Time_to_Failure', lambda x: round(x.mean(), 2) if x.notna().any() else 'N/A'},
+        **{'TTF max (mois)': ('Time_to_Failure', lambda x: round(x.max(), 2) if x.notna().any() else 'N/A'},
+        **{'TTF min (mois)': ('Time_to_Failure', lambda x: round(x.min(), 2) if x.notna().any() else 'N/A'},
         **{'Âge moyen (mois)': ('Age_fabrication', lambda x: round(x.mean(), 2))}
     ).sort_values('Nombre', ascending=False)
     
@@ -130,10 +130,10 @@ def show_key_metrics(df):
     metrics = [
         ("Appareils analysés", len(df)),
         ("Appareils avec incidents", ttf_data.count()),
-        ("TTF moyen (mois)", ttf_data.mean() if not ttf_data.empty else "N/A"),
-        ("TTF max (mois)", ttf_data.max() if not ttf_data.empty else "N/A"),
-        ("TTF min (mois)", ttf_data.min() if not ttf_data.empty else "N/A"),
-        ("Âge moyen (mois)", round(df['Age_fabrication'].mean(), 1))
+        ("TTF moyen (mois)", f"{ttf_data.mean():.2f}" if not ttf_data.empty else "N/A"),
+        ("TTF max (mois)", f"{ttf_data.max():.2f}" if not ttf_data.empty else "N/A"),
+        ("TTF min (mois)", f"{ttf_data.min():.2f}" if not ttf_data.empty else "N/A"),
+        ("Âge moyen (mois)", f"{df['Age_fabrication'].mean():.2f}")
     ]
     
     for i, (label, value) in enumerate(metrics):
@@ -208,10 +208,10 @@ def export_to_excel(df, global_comment, ttf_comment, age_comment):
             'Valeur': [
                 len(df),
                 ttf_data.count(),
-                round(ttf_data.mean(), 1) if not ttf_data.empty else 'N/A',
-                round(ttf_data.max(), 1) if not ttf_data.empty else 'N/A',
-                round(ttf_data.min(), 1) if not ttf_data.empty else 'N/A',
-                round(df['Age_fabrication'].mean(), 1)
+                round(ttf_data.mean(), 2) if not ttf_data.empty else 'N/A',
+                round(ttf_data.max(), 2) if not ttf_data.empty else 'N/A',
+                round(ttf_data.min(), 2) if not ttf_data.empty else 'N/A',
+                round(df['Age_fabrication'].mean(), 2)
             ]
         }
         pd.DataFrame(stats_data).to_excel(writer, sheet_name='Statistiques', index=False)
@@ -248,10 +248,10 @@ def create_pdf_report(df, global_comment, ttf_comment, age_comment):
     stats = [
         f"Appareils analysés: {len(df)}",
         f"Appareils avec incidents: {ttf_data.count()}",
-        f"TTF moyen: {round(ttf_data.mean(), 1) if not ttf_data.empty else 'N/A'} mois",
-        f"TTF max: {round(ttf_data.max(), 1) if not ttf_data.empty else 'N/A'} mois",
-        f"TTF min: {round(ttf_data.min(), 1) if not ttf_data.empty else 'N/A'} mois",
-        f"Âge moyen: {round(df['Age_fabrication'].mean(), 1)} mois"
+        f"TTF moyen: {round(ttf_data.mean(), 2) if not ttf_data.empty else 'N/A'} mois",
+        f"TTF max: {round(ttf_data.max(), 2) if not ttf_data.empty else 'N/A'} mois",
+        f"TTF min: {round(ttf_data.min(), 2) if not ttf_data.empty else 'N/A'} mois",
+        f"Âge moyen: {round(df['Age_fabrication'].mean(), 2)} mois"
     ]
     
     for stat in stats:
@@ -264,10 +264,10 @@ def create_pdf_report(df, global_comment, ttf_comment, age_comment):
     
     filiale_table = df.groupby('filiale').agg(
         Nombre=('SN', 'count'),
-        **{'TTF moyen (mois)': ('Time_to_Failure', lambda x: round(x.mean(), 1) if x.notna().any() else 'N/A')},
-        **{'TTF max (mois)': ('Time_to_Failure', lambda x: round(x.max(), 1) if x.notna().any() else 'N/A')},
-        **{'TTF min (mois)': ('Time_to_Failure', lambda x: round(x.min(), 1) if x.notna().any() else 'N/A')},
-        **{'Âge moyen (mois)': ('Age_fabrication', lambda x: round(x.mean(), 1))}
+        **{'TTF moyen (mois)': ('Time_to_Failure', lambda x: round(x.mean(), 2) if x.notna().any() else 'N/A'},
+        **{'TTF max (mois)': ('Time_to_Failure', lambda x: round(x.max(), 2) if x.notna().any() else 'N/A'},
+        **{'TTF min (mois)': ('Time_to_Failure', lambda x: round(x.min(), 2) if x.notna().any() else 'N/A'},
+        **{'Âge moyen (mois)': ('Age_fabrication', lambda x: round(x.mean(), 2))}
     ).reset_index()
     
     # En-têtes du tableau
