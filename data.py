@@ -340,7 +340,7 @@ def create_pdf_report(data_df, filiale_table, fig_ttf, fig_age, global_comment, 
             if os.path.exists(file):
                 os.remove(file)
     
+    # Retourne directement les bytes du PDF
     return pdf.output(dest='S').encode('latin1')
-
 if __name__ == "__main__":
     main()
