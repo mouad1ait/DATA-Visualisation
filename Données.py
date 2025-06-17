@@ -70,12 +70,12 @@ def main():
 
 def prepare_data(df):
     # Conversion des dates
-    df['date d\'installation'] = pd.to_datetime(df['date d\'installation'])
-    df['date d\'incident'] = pd.to_datetime(df['date d\'incident'])
-    df['dernière connexion'] = pd.to_datetime(df['dernière connexion'])
+    df['installationDate'] = pd.to_datetime(df['installationDate'])
+    df['incidentDate'] = pd.to_datetime(df['incidentDate'])
+    df['Lastconnexion'] = pd.to_datetime(df['Lastconnexion'])
     
     # Calcul des différences
-    df['différence jours'] = (df['date d\'incident'] - df['date d\'installation']).dt.days
+    df['différence jours'] = (df['incidentDate'] - df['installationDate']).dt.days
     
     # Extraction de l'année
     df['année'] = df['no de série'].str[2:4].astype(int) + 2000
