@@ -123,7 +123,7 @@ def main():
                 )
             
             # Dans la fonction main(), remplacer la partie PDF par:
-             with export_col2:
+            with export_col2:
                 st.subheader("Rapport PDF")
                 if st.button("Générer le rapport PDF"):
                     pdf_report = create_pdf_report(filtered_df, filiale_table, fig_ttf, fig_age, 
