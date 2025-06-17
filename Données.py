@@ -16,8 +16,8 @@ def main():
             df = pd.read_excel(uploaded_file)
             
             # Vérification des colonnes
-            required_columns = ['modèle', 'no de série', 'référence de pays', 'filiale', 
-                              'date d\'installation', 'dernière connexion', 'incident', 'date d\'incident']
+            required_columns = ['modèle', 'SN', 'refPays', 'filiale', 
+                              'installationDate', 'Lastconnexion', 'incident', 'incidentDate']
             
             if not all(col in df.columns for col in required_columns):
                 st.error("Les colonnes dans le fichier Excel ne correspondent pas aux attentes.")
