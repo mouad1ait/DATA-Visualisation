@@ -199,9 +199,9 @@ def create_filiale_table(df):
         return pd.DataFrame()
     
     table = df.groupby('filiale').agg(
-        Nombre=('SN', 'count'),
-        'Time_to_Failure_moyen_mois'=('Time_to_Failure_months', 'mean'),
-        'Age_moyen_depuis_fab_mois'=('Age_depuis_fabrication_months', 'mean')
+        Nombre=pd.NamedAgg(column='SN', aggfunc='count'),
+        Time_to_Failure_moyen_mois=pd.NamedAgg(column='Time_to_Failure_months', aggfunc='mean'),
+        Age_moyen_depuis_fab_mois=pd.NamedAgg(column='Age_depuis_fabrication_months', aggfunc='mean')
     ).reset_index()
     
     table['Time_to_Failure_moyen_mois'] = table['Time_to_Failure_moyen_mois'].round(1)
