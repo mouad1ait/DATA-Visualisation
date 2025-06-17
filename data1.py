@@ -151,13 +151,25 @@ def show_visualizations(df, ttf_comment, age_comment):
 def show_export_options(df, global_comment, ttf_comment, age_comment):
     """Gère l'export des données"""
     # Export Excel
+    st.subheader("Export Excel")
     excel_data = export_to_excel(df, global_comment, ttf_comment, age_comment)
     st.download_button(
-        "Télécharger Excel",
-        excel_data,
-        "analyse_appareils.xlsx",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        label="Télécharger Excel",
+        data=excel_data,
+        file_name='analyse_appareils.xlsx',
+        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
+    
+    # Export PDF
+    st.subheader("Export PDF")
+    if st.button("Générer le rapport PDF"):
+        pdf_report = create_pdf_report(df, global_comment, ttf_comment, age_comment)
+        st.download_button(
+            label="Télécharger PDF",
+            data=pdf_report,
+            file_name='rapport_analyse.pdf',
+            mime='application/pdf'
+        )
     
     # Export PDF
     if st.button("Générer PDF"):
