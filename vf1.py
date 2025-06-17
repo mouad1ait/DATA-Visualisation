@@ -112,10 +112,10 @@ def show_filiale_table(df):
     """Affiche le tableau de répartition par filiale"""
     table = df.groupby('filiale').agg(
         Nombre=('SN', 'count'),
-        **{'TTF moyen (mois)': ('Time_to_Failure', lambda x: round(x.mean(), 1) if x.notna().any() else 'N/A')},
-        **{'TTF max (mois)': ('Time_to_Failure', lambda x: round(x.max(), 1) if x.notna().any() else 'N/A')},
-        **{'TTF min (mois)': ('Time_to_Failure', lambda x: round(x.min(), 1) if x.notna().any() else 'N/A')},
-        **{'Âge moyen (mois)': ('Age_fabrication', lambda x: round(x.mean(), 1))}
+        **{'TTF moyen (mois)': ('Time_to_Failure', lambda x: round(x.mean(), 2) if x.notna().any() else 'N/A')},
+        **{'TTF max (mois)': ('Time_to_Failure', lambda x: round(x.max(), 2) if x.notna().any() else 'N/A')},
+        **{'TTF min (mois)': ('Time_to_Failure', lambda x: round(x.min(), 2) if x.notna().any() else 'N/A')},
+        **{'Âge moyen (mois)': ('Age_fabrication', lambda x: round(x.mean(), 2))}
     ).sort_values('Nombre', ascending=False)
     
     st.dataframe(table.style.background_gradient(cmap='Blues'), height=400)
