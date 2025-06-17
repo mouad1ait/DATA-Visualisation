@@ -9,3 +9,4 @@ seaborn
 python-dateutil
 python-docx
 fpdf2
+pycountry
