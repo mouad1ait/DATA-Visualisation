@@ -8,3 +8,5 @@ matplotlib
 seaborn
 python-dateutil
 python-docx
+tkinter
+datetime
