@@ -3,232 +3,289 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from datetime import datetime
-import numpy as np
 from io import BytesIO
-from PIL import Image
-import base64
+from matplotlib.backends.backend_pdf import PdfPages
 
 # Configuration de la page
 st.set_page_config(
-    page_title="Analyse Produits",
-    page_icon="📊",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    page_title="Analyse Produits - Sélection Personnalisée",
+    page_icon="🛠️",
+    layout="wide"
 )
 
-# Fonctions de traitement (conservées depuis la version originale)
-def analyze_data(df_inst, df_inc, df_rma):
-    analysis = {
-        "Produits installés": len(df_inst),
-        "Produits avec incidents": len(df_inc),
-        "Produits retournés": len(df_rma),
-        "Dates min/max installation": (df_inst['date_installation'].min(), df_inst['date_installation'].max()),
-        "Modèles uniques": df_inst['modèle'].unique().tolist(),
-        "Pays uniques": df_inst['filiale'].unique().tolist()
-    }
-    return analysis
-
-def merge_data(df_inst, df_inc, df_rma):
-    merged = pd.merge(df_inst, df_inc, on=['no_serie', 'modèle'], how='left', suffixes=('', '_incident'))
-    merged = pd.merge(merged, df_rma, on=['no_serie', 'modèle'], how='left', suffixes=('', '_rma'))
-    merged = merged.loc[:,~merged.columns.duplicated()]
-    return merged
-
-def convert_dates(df):
-    date_cols = [col for col in df.columns if 'date' in col.lower()]
-    for col in date_cols:
-        df[col] = pd.to_datetime(df[col], errors='coerce')
-        df[col] = df[col].dt.strftime('%d/%m/%Y')
-    return df
-
-def validate_serial(serial):
+# Fonctions de traitement
+def validate_serial(serial, format_rules):
+    """Validation du numéro de série selon les règles définies"""
     if pd.isna(serial):
         return False
-    return len(str(serial)) >= 6
+    # Implémentez ici votre logique de validation
+    return True
 
-def extract_manufacture_date(serial):
-    if not validate_serial(serial):
-        return None
+def extract_manufacture_date(serial, date_rules):
+    """Extraction de la date de fabrication selon les règles"""
     try:
-        year = int(str(serial)[:2]) + 2000
-        week = int(str(serial)[2:4])
-        return datetime.strptime(f"{week} {year}", "%U %Y").strftime('%d/%m/%Y')
+        # Exemple: les 4 premiers chiffres représentent l'année et la semaine
+        year_part = int(str(serial)[:2]) + 2000
+        week_part = int(str(serial)[2:4])
+        return datetime.strptime(f"{week_part} {year_part}", "%U %Y").strftime('%d/%m/%Y')
     except:
         return None
 
-def calculate_ages(df):
-    df['age_fabrication'] = (pd.to_datetime('now') - pd.to_datetime(df['date_fabrication'], errors='coerce')).dt.days
-    df['age_installation'] = (pd.to_datetime('now') - pd.to_datetime(df['date_installation'], errors='coerce')).dt.days
-    return df
-
-def calculate_ttf(df):
-    df['ttf'] = (pd.to_datetime(df['date_incident']) - pd.to_datetime(df['date_installation'])).dt.days
-    ttf_stats = df.groupby('modèle')['ttf'].agg(['min', 'mean', 'max']).reset_index()
-    return df, ttf_stats
-
-def calculate_stock_time(df):
-    df['duree_stock'] = (pd.to_datetime(df['date_installation']) - pd.to_datetime(df['date_fabrication'])).dt.days
-    return df
+def process_data(df_inst, df_inc, df_rma, col_mapping):
+    """Traitement principal des données"""
+    # Fusion
+    merged = pd.merge(
+        df_inst, 
+        df_inc, 
+        left_on=[col_mapping['inst']['serie'], 
+        right_on=[col_mapping['inc']['serie']],
+        how='left'
+    )
+    merged = pd.merge(
+        merged,
+        df_rma,
+        left_on=[col_mapping['inst']['serie']],
+        right_on=[col_mapping['rma']['serie']],
+        how='left'
+    )
+    
+    # Conversion dates
+    for df_type in ['inst', 'inc', 'rma']:
+        if 'date' in col_mapping[df_type]:
+            merged[col_mapping[df_type]['date']] = pd.to_datetime(
+                merged[col_mapping[df_type]['date']], 
+                errors='coerce'
+            )
+    
+    # Calculs
+    if 'inst' in col_mapping and 'date' in col_mapping['inst'] and 'inc' in col_mapping and 'date' in col_mapping['inc']:
+        merged['ttf'] = (
+            merged[col_mapping['inc']['date']] - 
+            merged[col_mapping['inst']['date']]
+        ).dt.days
+    
+    return merged
 
 # Interface Streamlit
 def main():
-    st.title("📊 Analyse des Produits")
-    st.markdown("""
-    **Outil complet d'analyse des données produits**  
-    *Fusion des données installations/incidents/RMA avec calculs avancés*
-    """)
-
-    # Upload fichier
-    with st.expander("ÉTAPE 1 : Chargement des données", expanded=True):
-        uploaded_file = st.file_uploader("Déposer votre fichier Excel ici", type=["xlsx", "xls"])
+    st.title("🛠️ Analyse Produits - Sélection Personnalisée")
+    
+    # Étape 1: Upload du fichier
+    with st.expander("ÉTAPE 1: Chargement du fichier Excel", expanded=True):
+        uploaded_file = st.file_uploader("Déposez votre fichier Excel ici", type=["xlsx", "xls"])
         
         if uploaded_file:
             try:
-                df_inst = pd.read_excel(uploaded_file, sheet_name='installations')
-                df_inc = pd.read_excel(uploaded_file, sheet_name='incidents')
-                df_rma = pd.read_excel(uploaded_file, sheet_name='RMA')
+                xls = pd.ExcelFile(uploaded_file)
+                sheet_names = xls.sheet_names
                 
-                with st.container():
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("Produits installés", len(df_inst))
-                    with col2:
-                        st.metric("Incidents enregistrés", len(df_inc))
-                    with col3:
-                        st.metric("Retours RMA", len(df_rma))
+                # Sélection des feuilles
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    inst_sheet = st.selectbox("Feuille des Installations", sheet_names)
+                with col2:
+                    inc_sheet = st.selectbox("Feuille des Incidents", sheet_names)
+                with col3:
+                    rma_sheet = st.selectbox("Feuille des RMA", sheet_names)
                 
-                # Analyse rapide
-                st.success("Fichier chargé avec succès !")
-                if st.checkbox("Afficher un aperçu des données brutes"):
-                    tab1, tab2, tab3 = st.tabs(["Installations", "Incidents", "RMA"])
-                    with tab1:
-                        st.dataframe(df_inst.head())
-                    with tab2:
-                        st.dataframe(df_inc.head())
-                    with tab3:
-                        st.dataframe(df_rma.head())
-            
+                # Chargement des données
+                df_inst = pd.read_excel(xls, sheet_name=inst_sheet)
+                df_inc = pd.read_excel(xls, sheet_name=inc_sheet)
+                df_rma = pd.read_excel(xls, sheet_name=rma_sheet)
+                
+                # Affichage aperçu
+                st.success("Fichier chargé avec succès!")
+                tab1, tab2, tab3 = st.tabs(["Installations", "Incidents", "RMA"])
+                with tab1:
+                    st.dataframe(df_inst.head())
+                with tab2:
+                    st.dataframe(df_inc.head())
+                with tab3:
+                    st.dataframe(df_rma.head())
+                
+                # Stockage en session
+                st.session_state['raw_data'] = {
+                    'inst': df_inst,
+                    'inc': df_inc,
+                    'rma': df_rma,
+                    'sheet_names': {
+                        'inst': inst_sheet,
+                        'inc': inc_sheet,
+                        'rma': rma_sheet
+                    }
+                }
+                
             except Exception as e:
-                st.error(f"Erreur lors du chargement : {str(e)}")
+                st.error(f"Erreur lors du chargement: {str(e)}")
 
-    # Traitement des données
-    if 'df_inst' in locals():
-        with st.expander("ÉTAPE 2 : Traitement des données"):
-            if st.button("Lancer le traitement complet"):
+    # Étape 2: Mapping des colonnes
+    if 'raw_data' in st.session_state:
+        with st.expander("ÉTAPE 2: Configuration des colonnes", expanded=True):
+            st.markdown("**Veuillez mapper chaque champ aux colonnes de vos données**")
+            
+            col_mapping = {}
+            df_inst = st.session_state['raw_data']['inst']
+            df_inc = st.session_state['raw_data']['inc']
+            df_rma = st.session_state['raw_data']['rma']
+            
+            # Mapping pour les installations
+            with st.container():
+                st.subheader("Installations")
+                cols = st.columns(4)
+                with cols[0]:
+                    col_mapping['inst'] = {
+                        'serie': st.selectbox("Colonne Série", df_inst.columns, key='inst_serie'),
+                        'modele': st.selectbox("Colonne Modèle", df_inst.columns, key='inst_modele')
+                    }
+                with cols[1]:
+                    col_mapping['inst']['pays_ref'] = st.selectbox(
+                        "Colonne Réf. Pays", 
+                        df_inst.columns, 
+                        key='inst_pays_ref'
+                    )
+                with cols[2]:
+                    col_mapping['inst']['filiale'] = st.selectbox(
+                        "Colonne Filiale", 
+                        df_inst.columns, 
+                        key='inst_filiale'
+                    )
+                with cols[3]:
+                    col_mapping['inst']['date'] = st.selectbox(
+                        "Colonne Date Installation", 
+                        df_inst.columns, 
+                        key='inst_date'
+                    )
+            
+            # Mapping pour les incidents
+            with st.container():
+                st.subheader("Incidents")
+                cols = st.columns(4)
+                with cols[0]:
+                    col_mapping['inc'] = {
+                        'serie': st.selectbox("Colonne Série", df_inc.columns, key='inc_serie'),
+                        'incident': st.selectbox("Colonne Incident", df_inc.columns, key='inc_incident')
+                    }
+                with cols[1]:
+                    col_mapping['inc']['date'] = st.selectbox(
+                        "Colonne Date Incident", 
+                        df_inc.columns, 
+                        key='inc_date'
+                    )
+            
+            # Mapping pour les RMA
+            with st.container():
+                st.subheader("Retours RMA")
+                cols = st.columns(4)
+                with cols[0]:
+                    col_mapping['rma'] = {
+                        'serie': st.selectbox("Colonne Série", df_rma.columns, key='rma_serie'),
+                        'rma': st.selectbox("Colonne RMA", df_rma.columns, key='rma_num')
+                    }
+                with cols[1]:
+                    col_mapping['rma']['date'] = st.selectbox(
+                        "Colonne Date RMA", 
+                        df_rma.columns, 
+                        key='rma_date'
+                    )
+            
+            st.session_state['col_mapping'] = col_mapping
+
+    # Étape 3: Traitement et analyse
+    if 'col_mapping' in st.session_state:
+        with st.expander("ÉTAPE 3: Traitement et Analyse", expanded=True):
+            if st.button("Lancer le traitement"):
                 with st.spinner('Traitement en cours...'):
                     try:
-                        # Exécution des fonctions
-                        analysis = analyze_data(df_inst, df_inc, df_rma)
-                        merged = merge_data(df_inst, df_inc, df_rma)
-                        merged = convert_dates(merged)
+                        # Récupération des données
+                        raw_data = st.session_state['raw_data']
+                        col_mapping = st.session_state['col_mapping']
                         
-                        merged['serie_valide'] = merged['no_serie'].apply(validate_serial)
-                        merged['date_fabrication'] = merged['no_serie'].apply(extract_manufacture_date)
+                        # Traitement
+                        processed_data = process_data(
+                            raw_data['inst'],
+                            raw_data['inc'],
+                            raw_data['rma'],
+                            col_mapping
+                        )
                         
-                        merged = calculate_ages(merged)
-                        merged, ttf_stats = calculate_ttf(merged)
-                        merged = calculate_stock_time(merged)
+                        # Validation S/N et date fabrication
+                        processed_data['serie_valide'] = processed_data[
+                            col_mapping['inst']['serie']
+                        ].apply(validate_serial, format_rules={})
                         
-                        # Sauvegarde en session
-                        st.session_state['processed_data'] = merged
-                        st.session_state['ttf_stats'] = ttf_stats
+                        processed_data['date_fabrication'] = processed_data[
+                            col_mapping['inst']['serie']
+                        ].apply(extract_manufacture_date, date_rules={})
                         
-                        st.success("Traitement terminé avec succès !")
+                        # Calculs supplémentaires
+                        if col_mapping['inst']['date'] in processed_data.columns:
+                            processed_data['age_installation'] = (
+                                pd.to_datetime('now') - 
+                                pd.to_datetime(processed_data[col_mapping['inst']['date']])
+                            ).dt.days
+                        
+                        # Sauvegarde des résultats
+                        st.session_state['processed_data'] = processed_data
+                        st.success("Traitement terminé avec succès!")
                         
                         # Affichage des résultats
-                        st.subheader("Statistiques clés")
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.dataframe(ttf_stats.style.background_gradient(cmap='YlOrRd'))
-                        with col2:
-                            st.write("**Distribution des âges**")
-                            fig, ax = plt.subplots()
-                            sns.histplot(merged['age_installation'], kde=True, ax=ax)
+                        st.dataframe(processed_data.head())
+                        
+                        # Visualisations
+                        st.subheader("Analyses")
+                        if 'ttf' in processed_data.columns:
+                            fig, ax = plt.subplots(figsize=(10, 6))
+                            sns.boxplot(
+                                data=processed_data,
+                                x=col_mapping['inst']['modele'],
+                                y='ttf'
+                            )
+                            plt.title("TTF par modèle")
                             st.pyplot(fig)
                         
                     except Exception as e:
-                        st.error(f"Erreur lors du traitement : {str(e)}")
+                        st.error(f"Erreur lors du traitement: {str(e)}")
 
-    # Visualisations
+    # Étape 4: Export des résultats
     if 'processed_data' in st.session_state:
-        with st.expander("ÉTAPE 3 : Visualisations", expanded=True):
-            st.subheader("Analyses statistiques")
+        with st.expander("ÉTAPE 4: Export des Résultats"):
+            # Export Excel
+            excel_buffer = BytesIO()
+            with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+                st.session_state['processed_data'].to_excel(writer, index=False)
             
-            tab1, tab2, tab3 = st.tabs(["Par modèle", "Par pays", "Évolutions temporelles"])
+            st.download_button(
+                label="📥 Télécharger Excel",
+                data=excel_buffer.getvalue(),
+                file_name="resultats_analyse.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
             
-            with tab1:
-                fig = plt.figure(figsize=(10, 6))
-                sns.boxplot(data=st.session_state['processed_data'], x='modèle', y='ttf')
-                plt.title('TTF par modèle')
-                st.pyplot(fig)
-                
-            with tab2:
-                fig = plt.figure(figsize=(12, 6))
-                sns.countplot(data=st.session_state['processed_data'], y='filiale', hue='modèle')
-                plt.title('Répartition par pays')
-                st.pyplot(fig)
-                
-            with tab3:
-                fig = plt.figure(figsize=(12, 6))
-                temp_df = st.session_state['processed_data'].copy()
-                temp_df['date_installation'] = pd.to_datetime(temp_df['date_installation'])
-                temp_df['mois_installation'] = temp_df['date_installation'].dt.to_period('M')
-                monthly = temp_df.groupby('mois_installation').size()
-                monthly.plot(kind='line', marker='o')
-                plt.title('Installations par mois')
-                st.pyplot(fig)
-
-    # Export des résultats
-    if 'processed_data' in st.session_state:
-        with st.expander("ÉTAPE 4 : Export des résultats"):
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.subheader("Export Excel")
-                excel_buffer = BytesIO()
-                with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
-                    st.session_state['processed_data'].to_excel(writer, sheet_name='Données traitées', index=False)
-                    st.session_state['ttf_stats'].to_excel(writer, sheet_name='Statistiques TTF', index=False)
-                
-                st.download_button(
-                    label="📥 Télécharger Excel",
-                    data=excel_buffer.getvalue(),
-                    file_name="analyse_produits.xlsx",
-                    mime="application/vnd.ms-excel"
-                )
-            
-            with col2:
-                st.subheader("Export PDF")
-                if st.button("Générer PDF"):
-                    pdf_buffer = BytesIO()
-                    with PdfPages(pdf_buffer) as pdf:
-                        # Page 1 - Résumé
-                        plt.figure(figsize=(11, 8))
-                        plt.text(0.1, 0.9, "Rapport d'analyse produits", fontsize=16)
-                        plt.text(0.1, 0.8, f"Date du rapport : {datetime.now().strftime('%d/%m/%Y')}", fontsize=10)
-                        plt.axis('off')
-                        
-                        # Tableau stats
-                        plt.table(cellText=st.session_state['ttf_stats'].values,
-                                 colLabels=st.session_state['ttf_stats'].columns,
-                                 cellLoc='center', loc='center')
+            # Export PDF
+            if st.button("Générer PDF"):
+                pdf_buffer = BytesIO()
+                with PdfPages(pdf_buffer) as pdf:
+                    plt.figure(figsize=(11, 8))
+                    plt.text(0.1, 0.9, "Rapport d'analyse", fontsize=16)
+                    plt.axis('off')
+                    
+                    if 'ttf' in st.session_state['processed_data'].columns:
+                        plt.figure(figsize=(10, 6))
+                        sns.boxplot(
+                            data=st.session_state['processed_data'],
+                            x=st.session_state['col_mapping']['inst']['modele'],
+                            y='ttf'
+                        )
+                        plt.title("TTF par modèle")
                         pdf.savefig()
                         plt.close()
-                        
-                        # Page 2 - Graphiques
-                        fig = plt.figure(figsize=(11, 8))
-                        sns.boxplot(data=st.session_state['processed_data'], x='modèle', y='ttf')
-                        plt.title('TTF par modèle')
-                        pdf.savefig(fig)
-                        plt.close()
-                    
-                    st.download_button(
-                        label="📥 Télécharger PDF",
-                        data=pdf_buffer.getvalue(),
-                        file_name="rapport_produits.pdf",
-                        mime="application/pdf"
-                    )
+                
+                st.download_button(
+                    label="📥 Télécharger PDF",
+                    data=pdf_buffer.getvalue(),
+                    file_name="rapport_analyse.pdf",
+                    mime="application/pdf"
+                )
 
-# Exécution
 if __name__ == '__main__':
     main()
