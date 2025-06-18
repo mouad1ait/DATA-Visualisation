@@ -133,31 +133,48 @@ if 'df' in locals():
             st.warning("Les colonnes 'modèle' et 'no de série' sont requises pour cette opération")
 
     # Section 5: Sauvegarde des résultats
-    with st.expander("5. Export des données traitées"):
-        # Options d'export
-        export_format = st.radio("Format d'export", ['Excel', 'CSV'])
-        filename = st.text_input("Nom du fichier", "donnees_pretraitees")
+with st.expander("5. Export des données traitées"):
+    # Nouvelle fonction pour préparer l'export
+    def prepare_export(df):
+        """Convertit toutes les colonnes de date avant export"""
+        date_columns = []
+        for col in df.columns:
+            if df[col].astype(str).str.contains(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}').any():
+                date_columns.append(col)
         
-        # Bouton d'export
-        if st.button("Générer le fichier exporté"):
-            output = BytesIO()
-            
-            if export_format == 'Excel':
-                filename += '.xlsx'
-                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                    df.to_excel(writer, index=False)
-                mime_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-            else:
-                filename += '.csv'
-                output.write(df.to_csv(index=False).encode('utf-8'))
-                mime_type = 'text/csv'
-            
-            st.download_button(
-                label="Télécharger le fichier",
-                data=output.getvalue(),
-                file_name=filename,
-                mime=mime_type
-            )
+        for col in date_columns:
+            df[col] = df[col].apply(convert_date_format)
+        
+        return df
+
+    # Options d'export
+    export_format = st.radio("Format d'export", ['Excel', 'CSV'])
+    filename = st.text_input("Nom du fichier", "donnees_pretraitees")
+    
+    if st.button("Générer le fichier exporté"):
+        # Préparation des données avec conversion des dates
+        df_export = prepare_export(df.copy())
+        
+        output = BytesIO()
+        
+        if export_format == 'Excel':
+            filename += '.xlsx'
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                df_export.to_excel(writer, index=False)
+            mime_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        else:
+            filename += '.csv'
+            output.write(df_export.to_csv(index=False).encode('utf-8'))
+            mime_type = 'text/csv'
+        
+        st.download_button(
+            label="Télécharger le fichier",
+            data=output.getvalue(),
+            file_name=filename,
+            mime=mime_type
+        )
+        st.success("Fichier généré avec les dates converties!")
+
 
 # Instructions
 with st.expander("Instructions d'utilisation"):
