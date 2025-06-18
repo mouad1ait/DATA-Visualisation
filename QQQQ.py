@@ -27,7 +27,7 @@ def process_data(uploaded_file):
         # Fusionner les données
         incidents_agg = df_incidents.groupby('no de série').agg(
             nombre_incidents=('incident', 'count'),
-            dernier_incident=('date d\'incidents', 'max')
+            dernier_incident=('date incident', 'max')
         ).reset_index()
 
         retours_agg = df_retours.groupby('no de série').agg(
