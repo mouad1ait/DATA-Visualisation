@@ -83,7 +83,7 @@ if 'df' in locals():
 
     # Section 3: Validation des numéros de série
     with st.expander("3. Validation des numéros de série"):
-        if 'numéro de série' in df.columns:
+        if 'no de série' in df.columns:
             df['Validation S/N'] = df['no de série'].apply(valider_numero_serie)
             st.write("Répartition des statuts:")
             st.bar_chart(df['Validation S/N'].value_counts())
