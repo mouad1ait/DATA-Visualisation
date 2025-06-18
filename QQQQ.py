@@ -13,9 +13,9 @@ def process_data(uploaded_file):
     """Fusionne les données des 3 feuilles Excel"""
     try:
         # Charger les feuilles
-        df_install = pd.read_excel(uploaded_file, sheet_name='feuille1')
-        df_incidents = pd.read_excel(uploaded_file, sheet_name='feuille2')
-        df_retours = pd.read_excel(uploaded_file, sheet_name='feuille3')
+        df_install = pd.read_excel(uploaded_file, sheet_name='Feuil1')
+        df_incidents = pd.read_excel(uploaded_file, sheet_name='Feuil2')
+        df_retours = pd.read_excel(uploaded_file, sheet_name='Feuil3')
 
         # Nettoyage des dates
         date_cols = ['date d\'installation', 'dernière connexion', 'date d\'incidents', 'date de retour']
