@@ -18,7 +18,7 @@ def process_data(uploaded_file):
         df_retours = pd.read_excel(uploaded_file, sheet_name='Feuil3')
 
         # Nettoyage des dates
-        date_cols = ['date d\'installation', 'dernière connexion', 'date d\'incidents', 'date de retour']
+        date_cols = ['date d\'installation', 'dernière connexion', 'date incident', 'date de retour']
         for df in [df_install, df_incidents, df_retours]:
             for col in date_cols:
                 if col in df.columns:
