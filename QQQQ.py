@@ -18,7 +18,7 @@ def process_data(uploaded_file):
         df_retours = pd.read_excel(uploaded_file, sheet_name='Feuil3')
 
         # Nettoyage des dates
-        date_cols = ['date d\'installation', 'dernière connexion', 'date incident', 'date de retour']
+        date_cols = ['date d\'installation', 'dernière connexion', 'date incident', 'date rma']
         for df in [df_install, df_incidents, df_retours]:
             for col in date_cols:
                 if col in df.columns:
@@ -26,14 +26,14 @@ def process_data(uploaded_file):
 
         # Fusionner les données
         incidents_agg = df_incidents.groupby('no de série').agg(
-            nombre_incidents=('incident', 'count'),
+            nombre_incidents=('# incident', 'count'),
             dernier_incident=('date incident', 'max')
         ).reset_index()
 
         retours_agg = df_retours.groupby('no de série').agg(
-            nombre_retours=('RMA', 'count'),
-            dernier_retour=('date de retour', 'max'),
-            RMA=('RMA', 'last')
+            nombre_retours=('référence RMA', 'count'),
+            dernier_retour=('date rma', 'max'),
+            RMA=('référence RMA', 'last')
         ).reset_index()
 
         df_final = df_install.merge(
