@@ -37,7 +37,7 @@ def process_data(df_inst, df_inc, df_rma, col_mapping):
     merged = pd.merge(
         df_inst, 
         df_inc, 
-        left_on=[col_mapping['inst']['serie'], 
+        left_on=[col_mapping['inst']['serie']], 
         right_on=[col_mapping['inc']['serie']],
         how='left'
     )
