@@ -84,30 +84,30 @@ if 'df' in locals():
     # Section 3: Validation des numéros de série
     with st.expander("3. Validation des numéros de série"):
         if 'numéro de série' in df.columns:
-            df['Validation S/N'] = df['numéro de série'].apply(valider_numero_serie)
+            df['Validation S/N'] = df['no de série'].apply(valider_numero_serie)
             st.write("Répartition des statuts:")
             st.bar_chart(df['Validation S/N'].value_counts())
             
             invalid = df[df['Validation S/N'] != "Valide"]
             if not invalid.empty:
                 st.write(f"{len(invalid)} numéros invalides trouvés")
-                st.dataframe(invalid[['numéro de série', 'Validation S/N']].head())
+                st.dataframe(invalid[['no de série', 'Validation S/N']].head())
         else:
-            st.warning("Colonne 'numéro de série' introuvable")
+            st.warning("Colonne 'no de série' introuvable")
 
     # Section 4: Gestion des doublons
     with st.expander("4. Suppression des doublons"):
-        if all(col in df.columns for col in ['modèle', 'numéro de série']):
-            dup_count = df.duplicated(subset=['modèle', 'numéro de série']).sum()
+        if all(col in df.columns for col in ['modèle', 'no de série']):
+            dup_count = df.duplicated(subset=['modèle', 'no de série']).sum()
             st.write(f"Nombre de doublons trouvés : {dup_count}")
             
             if st.button("Supprimer les doublons"):
-                df = df.sort_values('numéro de série').drop_duplicates(
-                    subset=['modèle', 'numéro de série'], keep='first')
+                df = df.sort_values('no de série').drop_duplicates(
+                    subset=['modèle', 'no de série'], keep='first')
                 st.success(f"{dup_count} doublons supprimés")
                 st.dataframe(df.head())
         else:
-            st.warning("Colonnes 'modèle' et/ou 'numéro de série' manquantes")
+            st.warning("Colonnes 'modèle' et/ou 'no de série' manquantes")
 
     # Section 5: Export des données
     with st.expander("5. Exporter les données traitées"):
