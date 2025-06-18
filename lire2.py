@@ -99,9 +99,9 @@ if 'df' in locals():
 
     # Section 3: Validation des numéros de série
     with st.expander("3. Validation des numéros de série"):
-        if 'numéro de série' in df.columns:
+        if 'no de série' in df.columns:
             # Ajout de la colonne de validation
-            df['statut_numero_serie'] = df['numéro de série'].apply(valider_numero_serie)
+            df['statut_numero_serie'] = df['no de série'].apply(valider_numero_serie)
             
             # Affichage des résultats
             st.subheader("Répartition des statuts")
@@ -111,26 +111,26 @@ if 'df' in locals():
             invalid_mask = df['statut_numero_serie'] != "Valide"
             if invalid_mask.any():
                 st.subheader(f"Exemples de numéros invalides ({invalid_mask.sum()} au total)")
-                st.dataframe(df[invalid_mask][['numéro de série', 'statut_numero_serie']].head())
+                st.dataframe(df[invalid_mask][['no de série', 'statut_numero_serie']].head())
         else:
-            st.warning("La colonne 'numéro de série' n'existe pas dans les données")
+            st.warning("La colonne 'no de série' n'existe pas dans les données")
 
     # Section 4: Nettoyage des doublons
     with st.expander("4. Gestion des doublons"):
-        if all(col in df.columns for col in ['modèle', 'numéro de série']):
+        if all(col in df.columns for col in ['modèle', 'no de série']):
             # Statistiques avant nettoyage
-            duplicates = df.duplicated(subset=['modèle', 'numéro de série'], keep=False)
+            duplicates = df.duplicated(subset=['modèle', 'no de série'], keep=False)
             st.write(f"Nombre de lignes avant nettoyage: {len(df)}")
             st.write(f"Nombre de doublons détectés: {duplicates.sum()}")
             
             if st.button("Supprimer les doublons (conserver la première occurrence)"):
-                df = df.sort_values(by='numéro de série', ascending=True)
-                df_clean = df.drop_duplicates(subset=['modèle', 'numéro de série'], keep='first')
+                df = df.sort_values(by='no de série', ascending=True)
+                df_clean = df.drop_duplicates(subset=['modèle', 'no de série'], keep='first')
                 st.success(f"Doublons supprimés! {len(df)-len(df_clean)} lignes enlevées")
                 df = df_clean.copy()
                 st.dataframe(df.head())
         else:
-            st.warning("Les colonnes 'modèle' et 'numéro de série' sont requises pour cette opération")
+            st.warning("Les colonnes 'modèle' et 'no de série' sont requises pour cette opération")
 
     # Section 5: Sauvegarde des résultats
     with st.expander("5. Export des données traitées"):
