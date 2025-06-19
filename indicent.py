@@ -22,7 +22,7 @@ def load_data(uploaded_file):
                 df[col] = pd.to_datetime(df[col], errors='coerce')
         
         # Calcul des ages si les colonnes existent
-        if 'date de fabrication' in df.columns and 'date d\'installation' in df.columns:
+        if all(col in df.columns for col in ['date incident', 'date de fabrication', 'date d\'installation']):
             df['age dès fabrication'] = (df['date incident'] - df['date de fabrication']).dt.days
             df['age dès installation'] = (df['date incident'] - df['date d\'installation']).dt.days
             df['durée entre fabrication et installation'] = (df['date d\'installation'] - df['date de fabrication']).dt.days
@@ -31,6 +31,30 @@ def load_data(uploaded_file):
     except Exception as e:
         st.error(f"Erreur lors du chargement du fichier: {e}")
         return None
+
+# Fonction améliorée pour les statistiques descriptives
+def safe_describe(df):
+    try:
+        # Colonnes numériques standard
+        num_cols = df.select_dtypes(include=[np.number]).columns
+        if len(num_cols) > 0:
+            st.write("### Statistiques numériques")
+            st.dataframe(df[num_cols].describe())
+        
+        # Colonnes datetime
+        date_cols = df.select_dtypes(include=['datetime']).columns
+        if len(date_cols) > 0:
+            st.write("### Statistiques des dates")
+            date_stats = df[date_cols].agg(['min', 'max', 'count'])
+            st.dataframe(date_stats)
+        
+        # Colonnes catégorielles
+        cat_cols = df.select_dtypes(include=['object', 'category']).columns
+        if len(cat_cols) > 0:
+            st.write("### Statistiques catégorielles")
+            st.dataframe(df[cat_cols].describe(include='all'))
+    except Exception as e:
+        st.warning(f"Impossible d'afficher toutes les statistiques: {str(e)}")
 
 # Upload du fichier
 uploaded_file = st.file_uploader("Téléchargez votre fichier Excel", type=['xlsx', 'xls'])
@@ -43,25 +67,14 @@ if uploaded_file is not None:
         st.subheader("Aperçu des données")
         st.dataframe(df.head())
         
-        # Statistiques descriptives
+        # Statistiques descriptives améliorées
         st.subheader("Statistiques descriptives")
-        
-        # Statistiques pour les colonnes numériques
-        num_cols = df.select_dtypes(include=[np.number]).columns
-        if len(num_cols) > 0:
-            st.write("### Statistiques numériques")
-            st.write(df[num_cols].describe(datetime_is_numeric=True))
-        
-        # Statistiques pour les colonnes catégorielles
-        cat_cols = df.select_dtypes(exclude=[np.number]).columns
-        if len(cat_cols) > 0:
-            st.write("### Statistiques catégorielles")
-            st.write(df[cat_cols].describe(include='all'))
+        safe_describe(df)
         
         # Sélection des colonnes à analyser
         st.sidebar.header("Options d'analyse")
         
-        # Filtres seulement si les colonnes existent
+        # Filtres conditionnels
         if 'modèle' in df.columns:
             model_filter = st.sidebar.multiselect(
                 "Filtrer par modèle",
