@@ -45,39 +45,37 @@ if uploaded_file is not None:
         
         # Statistiques descriptives
         st.subheader("Statistiques descriptives")
-        # Replace this line:
-st.write(df.describe(include='all', datetime_is_numeric=True))
-
-# With this:
-try:
-    # Try including all columns first
-    st.write(df.describe(include='all'))
-except:
-    try:
-        # If that fails, try without include='all'
-        st.write(df.describe(datetime_is_numeric=True))
-    except:
-        # If both fail, just use basic describe
-        st.write(df.describe())
+        
+        # Statistiques pour les colonnes numériques
+        num_cols = df.select_dtypes(include=[np.number]).columns
+        if len(num_cols) > 0:
+            st.write("### Statistiques numériques")
+            st.write(df[num_cols].describe(datetime_is_numeric=True))
+        
+        # Statistiques pour les colonnes catégorielles
+        cat_cols = df.select_dtypes(exclude=[np.number]).columns
+        if len(cat_cols) > 0:
+            st.write("### Statistiques catégorielles")
+            st.write(df[cat_cols].describe(include='all'))
         
         # Sélection des colonnes à analyser
         st.sidebar.header("Options d'analyse")
-        model_filter = st.sidebar.multiselect(
-            "Filtrer par modèle",
-            options=df['modèle'].unique() if 'modèle' in df.columns else [],
-            default=df['modèle'].unique() if 'modèle' in df.columns else []
-        )
         
-        country_filter = st.sidebar.multiselect(
-            "Filtrer par pays",
-            options=df['filiale'].unique() if 'filiale' in df.columns else [],
-            default=df['filiale'].unique() if 'filiale' in df.columns else []
-        )
-        
-        # Application des filtres
-        if model_filter:
+        # Filtres seulement si les colonnes existent
+        if 'modèle' in df.columns:
+            model_filter = st.sidebar.multiselect(
+                "Filtrer par modèle",
+                options=df['modèle'].unique(),
+                default=df['modèle'].unique()
+            )
             df = df[df['modèle'].isin(model_filter)]
-        if country_filter:
+        
+        if 'filiale' in df.columns:
+            country_filter = st.sidebar.multiselect(
+                "Filtrer par pays",
+                options=df['filiale'].unique(),
+                default=df['filiale'].unique()
+            )
             df = df[df['filiale'].isin(country_filter)]
         
         # Onglets pour différentes analyses
@@ -127,8 +125,8 @@ except:
                     st.pyplot(fig)
                 
                 with col2:
-                    st.write("### TTF par modèle")
                     if 'modèle' in df.columns:
+                        st.write("### TTF par modèle")
                         fig, ax = plt.subplots()
                         sns.boxplot(x='modèle', y='time to failure', data=df, ax=ax)
                         plt.xticks(rotation=45)
@@ -153,8 +151,8 @@ except:
                     st.pyplot(fig)
                 
                 with col2:
-                    st.write("### Modèles les plus défaillants par pays")
                     if 'modèle' in df.columns:
+                        st.write("### Modèles les plus défaillants par pays")
                         top_models_by_country = df.groupby(['filiale', 'modèle']).size().reset_index(name='counts')
                         top_models_by_country = top_models_by_country.sort_values('counts', ascending=False).head(15)
                         fig, ax = plt.subplots(figsize=(10, 6))
@@ -193,22 +191,23 @@ except:
         with tab5:
             st.subheader("Détails des incidents")
             
-            if 'incident' in df.columns and 'modèle' in df.columns:
+            if 'incident' in df.columns:
                 st.write("### Top 20 des incidents les plus fréquents")
                 top_incidents = df['incident'].value_counts().head(20)
                 st.dataframe(top_incidents)
                 
-                selected_incident = st.selectbox(
-                    "Sélectionnez un incident pour voir les modèles concernés",
-                    options=top_incidents.index
-                )
-                
-                if selected_incident:
-                    st.write(f"### Modèles pour l'incident {selected_incident}")
-                    models_for_incident = df[df['incident'] == selected_incident]['modèle'].value_counts()
-                    fig, ax = plt.subplots()
-                    sns.barplot(x=models_for_incident.values, y=models_for_incident.index, ax=ax)
-                    st.pyplot(fig)
+                if 'modèle' in df.columns:
+                    selected_incident = st.selectbox(
+                        "Sélectionnez un incident pour voir les modèles concernés",
+                        options=top_incidents.index
+                    )
+                    
+                    if selected_incident:
+                        st.write(f"### Modèles pour l'incident {selected_incident}")
+                        models_for_incident = df[df['incident'] == selected_incident]['modèle'].value_counts()
+                        fig, ax = plt.subplots()
+                        sns.barplot(x=models_for_incident.values, y=models_for_incident.index, ax=ax)
+                        st.pyplot(fig)
     else:
         st.warning("Le fichier n'a pas pu être chargé correctement. Veuillez vérifier le format.")
 else:
