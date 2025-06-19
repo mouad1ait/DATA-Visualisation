@@ -45,7 +45,20 @@ if uploaded_file is not None:
         
         # Statistiques descriptives
         st.subheader("Statistiques descriptives")
-        st.write(df.describe(include='all', datetime_is_numeric=True))
+        # Replace this line:
+st.write(df.describe(include='all', datetime_is_numeric=True))
+
+# With this:
+try:
+    # Try including all columns first
+    st.write(df.describe(include='all'))
+except:
+    try:
+        # If that fails, try without include='all'
+        st.write(df.describe(datetime_is_numeric=True))
+    except:
+        # If both fail, just use basic describe
+        st.write(df.describe())
         
         # Sélection des colonnes à analyser
         st.sidebar.header("Options d'analyse")
