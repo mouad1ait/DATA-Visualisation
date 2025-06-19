@@ -129,26 +129,26 @@ if uploaded_file is not None:
         with tab2:
             st.subheader("Analyse du Time to Failure")
             
-            if 'time to failure' in df.columns:
+            if 'TTF_V2' in df.columns:
                 col1, col2 = st.columns(2)
                 with col1:
                     st.write("### Distribution du TTF")
                     fig, ax = plt.subplots()
-                    sns.histplot(df['time to failure'], bins=20, kde=True, ax=ax)
+                    sns.histplot(df['TTF_V2'], bins=20, kde=True, ax=ax)
                     st.pyplot(fig)
                 
                 with col2:
                     if 'modèle' in df.columns:
                         st.write("### TTF par modèle")
                         fig, ax = plt.subplots()
-                        sns.boxplot(x='modèle', y='time to failure', data=df, ax=ax)
+                        sns.boxplot(x='modèle', y='TTF_V2', data=df, ax=ax)
                         plt.xticks(rotation=45)
                         st.pyplot(fig)
             
-            if 'age dès installation' in df.columns:
+            if 'Age dès installation' in df.columns:
                 st.write("### Âge depuis l'installation lors de l'incident")
                 fig, ax = plt.subplots()
-                sns.histplot(df['age dès installation'], bins=20, kde=True, ax=ax)
+                sns.histplot(df['Age dès installation'], bins=20, kde=True, ax=ax)
                 st.pyplot(fig)
         
         with tab3:
@@ -176,8 +176,8 @@ if uploaded_file is not None:
             st.subheader("Analyse temporelle")
             
             if 'date incident' in df.columns:
-                df['année incident'] = df['date incident'].dt.year
-                df['mois incident'] = df['date incident'].dt.to_period('M').astype(str)
+                df['année incident'] = df['Date incident v2'].dt.year
+                df['mois incident'] = df['Date incident v2'].dt.to_period('M').astype(str)
                 
                 col1, col2 = st.columns(2)
                 with col1:
@@ -195,10 +195,10 @@ if uploaded_file is not None:
                     plt.xticks(rotation=45)
                     st.pyplot(fig)
             
-            if 'durée entre fabrication et installation' in df.columns:
+            if 'entre fabrication et installation ' in df.columns:
                 st.write("### Durée entre fabrication et installation")
                 fig, ax = plt.subplots()
-                sns.histplot(df['durée entre fabrication et installation'], bins=20, kde=True, ax=ax)
+                sns.histplot(df['entre fabrication et installation '], bins=20, kde=True, ax=ax)
                 st.pyplot(fig)
         
         with tab5:
